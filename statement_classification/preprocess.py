@@ -41,8 +41,8 @@ def separate_clauses(lines):
     #print >>sys.stderr, "Looking for %s in %s"%(sat_clause, sent)
     ind = sent.index(sat_clause)
     sat_len = len(sat_clause)
-    main_clause = sent[sat_len:] if ind == 0 else sent[:ind]
-    clauses.append((sat_clause, main_clause))
+    clause_pair = (sat_clause, sent[sat_len:]) if ind == 0 else (sent[:ind], sat_clause)
+    clauses.append(clause_pair)
   return clauses
 
 def tokenize_sentences(phrase):
@@ -55,4 +55,41 @@ def tokenize_sentences(phrase):
     else:
       fixed_phrase_sents.append(phrase_sents[i])
     i += 1
-  return fixed_phrase_sents 
+  return fixed_phrase_sents
+
+def extract_result_section(lines):
+  in_results = False
+  sents_to_process = []
+  for sent in lines:
+    sent_parts = sent.split()
+    if sent[0].isupper() and len(sent_parts) <= 3:
+      # We are probably looking at a section header
+      if in_results:
+        break
+      elif sent_parts[0].lower() == "results":
+        in_results = True
+    elif in_results:
+      sents_to_process.append(sent)
+  return sents_to_process
+
+def write_clauses(filename, outfilename, train=True, results_only=True):
+  outfile = codecs.open(outfilename, "w", "utf-8")
+  inlines = codecs.open(filename, "r", "utf-8")
+  lines_to_process = extract_result_section(inlines) if results_only else inlines
+  for line in lines_to_process:
+    if train:
+      label, phrase = line.strip().split('\t')
+    else:
+      phrase = line.strip()
+    phrase_sents = tokenize_sentences(phrase)
+    for phrase_sent in phrase_sents:
+      sent_words = word_tokenize(phrase_sent)
+      clause_set = separate_clauses([sent_words])
+      for clauses in clause_set:
+        for clause in clauses:
+          clause = clause.strip()
+          if clause != "":
+            if train:
+              print >>outfile, "%s\t%s"%(label, clause)
+            else:
+              print >>outfile, clause
