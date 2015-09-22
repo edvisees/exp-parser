@@ -1,0 +1,100 @@
+goal	that the IRF-4-Stat6 interaction could occur in vivo
+goal	To confirm
+method	to immunoprecipitate extracts from Ramos cells stimulated with either anti-CD40 Ab , a control Ab , or IL-4
+method	we used an anti-IRF-4 antiserum
+result	Consistent with our previous observations
+result	, presence of the Stat6 protein could be detected in the IRF-4 immunoprecipitates from both stimulated and unstimulated Ramos lysates ( Fig . 3 B , top ) .
+result	Similar results were also observed in JY cells .
+result	ensured for equal loading of the immunoprecipitates ( Fig . 3 B , bottom ) .
+result	Consistent with recent studies , which have detected IRF-4 in both the nuclear and cytoplasmic compartments ( Riccardo Dalla-Favera , personal communication )
+result	, the IRF-4-Stat6 association can occur in the absence of IL-4 stimulation .
+result	to decrease upon stimulation of Ramos cells with the CD40 Ab
+result	Interestingly , in both GST and coimmunoprecipitation experiments the IRF-4-Stat6 interaction appears
+implication	that IRF-4 is capable of specifically interacting with Stat6 both in vitro and in vivo
+implication	Thus , our data indicate
+method	to immunoprecipitation assays with either an anti-IRF-4 or anti-BCL-6 antiserum ( Fig . 5 C )
+method	We also subjected extracts from Ramos cells cultured with or without IL-4
+result	that IRF-4 and BCL-6 coimmunoprecipitated
+result	Association of BCL-6 and IRF-4 was not affected by IL-4 treatment .
+implication	that this may be due either to a limited ability of this antiserum to immunoprecipitate increasing amounts of IRF-4 or to the ability of IRF-4 upon IL-4-CD40 treatment to form alternative complexes that can not be recognized by this antiserum
+implication	We suspect
+goal	To further corroborate the specificity of the association of IRF-4 with BCL-6 and Stat6 ,
+method	we also performed coimmunoprecipitation experiments with either an anti-IRF-4 or an antiserum against a nuclear factor kappaB ( NF-kappaB ) family member , p65 .
+method	which constitutively express p65 in the nucleus ( 49 ; Fig . 5 D )
+method	These assays were conducted on extracts from JY cells ,
+result	to detect an association of IRF-4 with p65
+result	These experiments failed
+implication	that IRF-4 can interact with the Kruppel zinc finger transcriptional repressor , BCL-6 , both in vitro and in vivo
+implication	These studies thus indicate
+implication	that express high levels of CD23b , suggesting that the presence of BCL-6 affects the functional ability of IRF-4 to modulate CD23b transcription
+implication	Furthermore , no such interaction is detected in cells ( JY )
+method	( C ) Ramos cells were either unstimulated or stimulated with IL-4 ( 100 U/ml ) .
+method	Nuclear extracts were prepared and immunoprecipitated with either an anti-IRF-4 or an anti-BCL-6 antiserum .
+method	using an anti-BCL-6 antiserum ( top )
+method	The immune complexes were resolved by 7 % SDS-PAGE , and then analyzed by Western blotting
+method	as described in the legend to Fig . 3
+method	The blot was later stripped and reprobed with an anti-IRF-4 antiserum ( bottom ) ,
+method	( B ) Ramos cells were stimulated as
+method	described in the legend to Fig . 2 .
+method	JY cells were either unstimulated or stimulated with IL-4 ( 100 U/ml ) .
+method	WCEs were then prepared and immunoprecipitated with an IRF-4 antiserum .
+method	using a Stat6 Ab ( top )
+method	The immunoprecipitated proteins were resolved by 7 % SDS-PAGE and then analyzed by Western blotting
+method	to probe the primary Ab binding
+method	The blot was later stripped and reprobed with an anti-IRF-4 antiserum ( bottom ) using protein A-horseradish peroxidase conjugate as a secondary detection reagent
+goal	To assess the contribution of Grb2 for Gab1-c-Met association in cells ,
+method	using the newly identified mutants : 293 human kidney epithelial
+method	cells were transfected with plasmid vectors expressing Flag epitope-tagged Gab1 proteins and HA epitope-tagged Grb2 .
+result	Gab1 and its mutant proteins were precipitated with anti-Flag antibodies
+result	After stimulation of endogenous c-Met with HGF/SF ,
+result	while the Gab1 mutant which lacks both Grb2 association sites ( DeltaGrb2 ) can still bind c-Met
+result	Interaction of Gab1 with c-Met is abrogated by the MBS mutation ( Deltac-Met ) ,
+result	Grb2 association with Gab1 was not affected by the V490A mutation in the
+result	MBS ( Deltac-Met ) , but impaired by mutation of the two Grb2-binding sites ( DeltaGr
+implication	that in cells association of Gab1 with c-Met depends on direct interaction via its MBS , while Grb2 binding may add to the strength of the interaction
+implication	These results demonstrate
+result	Wild-type p97/Gab2 prepared from HGF/SF activated cell extract did not associate with c-Met
+result	, but the p97 hybrid containing the MBS of Gab1 did ( Fig . 2 B ) .
+goal	that the interactions of Gab1 with the substrates , including CRKL , were dependent on Gab1 phosphorylation
+goal	To confirm
+method	we examined these interactions in mammalian cells after HGF/SF stimulation .
+result	Flag epitope-tagged Gab1 was precipitated from transiently transfected 293 cells and detected by Western blotting
+result	the level increased to a maximum of about fourfold after 5-10 min of HGF/SF stimulation
+result	In the absence of HGF/SF , a basal level of Gab1 phosphorylation was detected , but
+result	was enhanced
+result	Concomitant with the increase in Gab1 phosphorylation , binding of CRKL , Shp2 , and the p85 subunit of PI ( 3 ) K
+implication	that these interactions are phosphorylation dependent
+result	Even though Crk and CRKL were both found in the screen
+result	, only CRKL immunoprecipitated efficiently with Gab1 .
+implication	that from the Crk family of proteins , CRKL is the major association partner of Gab1
+implication	Therefore , it appears
+result	Gab1 mutant proteins were transiently expressed in 293 cells and precipitated after stimulation with HGF/SF
+result	Similar results were obtained when interactions were analyzed in mammalian expression systems :
+method	Western blots were probed sequentially with antibodies against CRKL , p85 , Shp2 , and Gab1 ( Fig . 4 B ) .
+other-result	to be able to bind phospholipids
+other-result	The PH domain of Gab1 has been shown
+result	However , deletion of the PH domain ( DeltaPH ) did not reduce the HGF/SF-induced association with Shp2 , CRKL , or PI ( 3 ) K ( Fig . 4 B ) .
+result	while Shp2 can also associate with the COOH terminus of Gab1 , but requires Y628 which is mutated in Gab1DeltaS
+result	CRKL binding was abrogated in the Gab1 mutants expressing only the COOH terminus of Gab1 ( Gab1Cter ) and strongly reduced in the mutant lacking the CRKL-binding region ( DeltaCBR ) ,
+result	which carries mutations in all three PI ( 3 ) K consensus binding sites
+result	As we had observed by yeast two-hybrid analysis , the Gab1 mutant DeltaPI ( 3 ) K
+result	this interaction is strongly reduced by mutation of the remaining PI ( 3 ) K consensus binding sites , Y473 and Y590 ( CterDeltaPI ( 3 ) K ) ( Fig . 4 B )
+result	PI ( 3 ) K associates also efficiently with Gab1Cter lacking amino acids 1-449 , but
+goal	if Gab1 is sufficient to mediate c-Met-specific signals ,
+goal	To test
+result	the cytoplasmic tail , associates with CRKL , Shp2 and PI ( 3 ) K ( Fig . 5 A )
+result	When stimulated with NGF , the trk-met-Gab1 hybrid receptor , but not trk-met lacking
+result	Trk-met-Gab1Cter expressing trk-met plus only the COOH-terminal coding sequences of Gab1 , residues 450-695 , does not bind CRKL , but can still associate with Shp2 and PI ( 3 ) K .
+result	The associations of Shp2 and PI ( 3 ) K depend on Y628 or Y473 and Y590
+implication	that Gab1 expressed in this hybrid form is efficiently phosphorylated and associates with signaling molecules similar to Gab1 proteins stimulated by activated c-Met
+implication	This suggests
+method	( D ) Association of Gab1 mutants with c-Met and Grb2 in tissue culture .
+method	HA-tagged Grb2 expression vector plus pBat-Flag ( Control ) or expression vectors encoding Flag-tagged Gab1 proteins as indicated
+method	293 cells were transfected with
+method	After stimulation with HGF/SF , proteins were precipitated with anti-Flag agarose .
+method	as indicated
+method	Proteins were separated by SDS-PAGE and probed with antibodies
+method	( B ) p97/Gab2+MBS associates with c-Met in cultured cells .
+method	293 cells were transfected with HA-Grb2 and Flag-tagged Gab1 expression vectors and were stimulated with HGF/SF .
+method	as indicated
+method	After immunoprecipitation with anti-Flag agarose , proteins were detected by Western blotting with anti-c-Met , anti-HA and anti-Flag antibodies

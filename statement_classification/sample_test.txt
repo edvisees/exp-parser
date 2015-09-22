@@ -1,0 +1,50 @@
+HUVEC , HMVE and BAE cells were stimulated with VEGF-A ( 100 etag/ml ) for indicated times .
+in which ectopic constructs were not
+we used Eps8-/- fibroblasts
+, the control RNA transfectants ( lanes 2 and 5 ) , and the parental HeLa cells ( lanes 3 and 6 ) were serum starved ( lanes 1-3 ) and stimulated with 10 % FCS ( A , lanes 4-6 ) or 2 ng/ml IGF-1 ( B , lanes 4-6 ) for 10 min .
+Equal amounts of lysates were subjected to in vitro binding assays with the immobilized CRIB domain of PAK65 .
+Interestingly , HMVE cells were more sensitive to
+( A ) Quiescent MEFs , microinjected with the indicated peptides together with rabbit IgG ( supplemental materials ) , were treated with PDGF for 10 min .
+in which 0.5 mg were
+To prove this point ,
+the percentages of the TUNEL-positive cells ( E ) were calculated as in the legend to Fig . 2
+Thus , Eps8 is required for the association between Sos-1 and nucleotide-free Rac .
+that Pak1 controls cell spreading by regulating the beta-Pix-Rac1 interaction and , as a result , beta-Pix-mediated Rac1 activation
+, and the capacity of this triple mutant ( p66shcY3A ) to displace sos1 from grb2 in vivo was examined .
+Moreover , the V12Rac1 P-A mutant showed no discrete localization in these cells ,
+( D ) REF52 cells were transiently transfected with HA-MEK1 ( lanes 1-6 ) or HA-MEK1 S298A ( lanes 7-12 ) .
+washing
+( bottom ) Expression of grb2 and p66shcCH2 in whole cell lysates .
+than Sos-1 might be contained in the Eps8-Abi1-Sos-1 complex and be responsible for the observed Rac-GEF activity
+that two pools of Sos-1 , associated with different adaptors , exist simultaneously in the cell
+we transfected HeLa cells
+More than 100 cells were injected in each experiment .
+, ErbB1/EGFR-1 and PDGFRbeta ectopically expressed in PAE cells ( our unpublished data ) ,
+which are mutated in trk-met-CterDeltaShp2 and trk-met-CterDeltaPI ( 3 ) K , respectively
+( A ) In vitro kinase assays were performed
+to be a substrate for phosphorylation by PAK ( Frost et al. , 1997 )
+to propose that Sos-1 alone ( or complexed with proteins , such as Grb2 ) is endowed with Ras-GEF activity
+Our recent study indicates
+did not lead to increased PAK65 activity .
+Cos-7 cells were cotransfected ( Tfx ) with E3b1 ( or a control empty vector , ctr ) and either a myc-tagged Ras ( left ) or HA-tagged MAPK ( right )
+All cells were cotransfected with grb2 .
+that EGFR immunecomplex contained both Stat3 and Src ( Fig . 2A ( i ) , IP : EGFR ) , Src immunecomplex contained both Stat3 and EGFR ( Fig . 2A ( ii ) , IP : Src ) , while Stat3 immunecomplex contained both EGFR and Src ( Fig . 2A ( iii ) , IP : Stat3 )
+HA-Sos , HA-epitope tagged Sos-1 ( B )
+indicating that MEK1 S298 phosphorylation regulates the interaction of MEK1 with its upstream activator ( Frost et al. , 1997 )
+In line with this , we observed
+Thus , full-length p66shc , via prolines 47 and 50 , promotes dissociation of sos1 from grb2 in vivo and increases the formation of the sos1-eps8-e3b1 complex .
+P Rich , proline rich region ; SH3 , SH3 domain
+( A , Top ) schematic of E3b1 .
+( B ) Total cellular lysates ( 10 mg ) , obtained from the transfectants described in A , were immunoprecipitated ( IP )
+showing displacement of CH2 from grb2 by C-sos1
+The levels of Eps8 , PDGFR , and EGFR in individual clones of eps8-/- , -/- [ Eps8myc ] , or in wild-type ( WT ) cells were determined by
+whether PAK regulates adhesion-dependent MEK1 S298 phosphorylation in vivo ,
+we assessed the role of Src in
+to infect wild-type and eps8-/- fibroblast
+to beta-Pix
+to undergo proliferation in response to VEGF
+indicating the generality of MEK1 S298 phosphorylation .
+Staining of the cells with an antibody to paxillin ( a marker of focal adhesions ) showed
+The indicted lanes ( lysate ) were loaded with 50 mug of total cellul
+, and Rac-GEF assays were performed on anti-myc immunoprecipitates .
+to make sure that our observation in CKR also is true in the context of non-chimeric VEGFR-2 ,
