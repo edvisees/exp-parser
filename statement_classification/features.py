@@ -21,14 +21,18 @@ class FeatureProcessing(object):
     features = []
     for word, tag in pos_tags:
       wl = word.lower()
+      # Feat 1: POS features
       if tag != ',' and tag != '.':
         features.append(tag)
+      # Feat 2: Verb and adverb identity
       if tag == 'RB' or tag.startswith('VB'):
         features.append(wl)
+      # Feat 3: Presence of figure references and citations
       if word.startswith("Fig"):
         features.append("figure")
     if re.search("[A-Z][^\s]+ et al.", phrase) is not None:
       features.append("reference")
+    # Feat 4: Presence of specific words or phrases
     if re.search("[Dd]ata not shown", phrase) is not None:
       features.append("data_not_shown")
     for word in self.implication_words:
