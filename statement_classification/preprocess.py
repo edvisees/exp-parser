@@ -41,8 +41,23 @@ def separate_clauses(lines):
     #print >>sys.stderr, "Looking for %s in %s"%(sat_clause, sent)
     ind = sent.index(sat_clause)
     sat_len = len(sat_clause)
-    clause_pair = (sat_clause, sent[sat_len:]) if ind == 0 else (sent[:ind], sat_clause)
-    clauses.append(clause_pair)
+    if ind == 0:
+      main_clause = sent[sat_len:]
+      clause_set = (sat_clause, main_clause)
+    else:
+      main_clause = sent[:ind]
+      if ind + sat_len != len(sent):
+        # There is a remainder at the end
+        remainder = sent[ind + sat_len :]
+        if remainder.strip() == ".":
+          sat_clause = sat_clause + " ."
+          clause_set = (main_clause, sat_clause)
+        else:
+          clause_set = (main_clause, sat_clause, remainder)
+      else:
+        clause_set = (main_clause, sat_clause) 
+    #clause_set = (sat_clause, sent[sat_len:]) if ind == 0 else (sent[:ind], sat_clause)
+    clauses.append(clause_set)
   return clauses
 
 def tokenize_sentences(phrase):
