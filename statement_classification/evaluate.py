@@ -6,7 +6,7 @@ import sys
 #     print "Please give the files in that order."
 #     print "For example, python HW2_eval.py docCluster.txt goldClusters.txt"
 #     sys.exit()
-#print "just type \" python outfile gold_labels\""
+#print "just type \" python evaluate.py outfile gold_labels\""
 input = open(sys.argv[1], "r")
 #input = open("./sample_test.out", "r")
 gold = open(sys.argv[2], "r")
