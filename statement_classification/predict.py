@@ -1,6 +1,6 @@
 import sys
 import codecs
-from classifier import StatementClassifier
+from svm_classifier import StatementClassifier
 
 sc = StatementClassifier()
 predictions = sc.predict(sys.argv[1])
