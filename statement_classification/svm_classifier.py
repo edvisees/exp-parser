@@ -4,6 +4,7 @@ import pickle
 import numpy
 from random import shuffle
 
+from feature_ablation import get_filter
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.multiclass import OneVsRestClassifier
@@ -33,9 +34,10 @@ class StatementClassifier(object):
 
   def predict(self, testfile_name):
     test_data = [x.strip() for x in codecs.open(testfile_name, "r", "utf-8")]
+    filter_feature = get_filter()
     if len(test_data) == 0:
       return []
-    X = numpy.asarray([self.fp.featurize(clause) for clause in test_data])
+    X = numpy.asarray([self.fp.featurize(clause, filter_feature) for clause in test_data])
     predictions = [self.tagset[ind] for ind in self.classifier.predict(X)]
     return zip(predictions, test_data)
 
@@ -43,11 +45,12 @@ class StatementClassifier(object):
     print >>sys.stderr, "Reading data.."
     train_data = [tuple(x.strip().split("\t")) for x in codecs.open(trainfile_name, "r", "utf-8")]
     shuffle(train_data)
+    filter_feature = get_filter()
     train_labels, train_clauses = zip(*train_data)
     train_labels = [tl.lower() for tl in train_labels]
     print >>sys.stderr, "Indexing features.."
     self.fp.index_data(train_clauses)
-    X = numpy.asarray([self.fp.featurize(clause) for clause in train_clauses])
+    X = numpy.asarray([self.fp.featurize(clause,filter_feature) for clause in train_clauses])
     tagset = list(set(train_labels))
     tag_index = {l:i for (i, l) in enumerate(tagset)}
     Y = numpy.asarray([[tag_index[label]] for label in train_labels])
