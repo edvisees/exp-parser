@@ -49,8 +49,8 @@ class StatementClassifier(object):
     train_labels, train_clauses = zip(*train_data)
     train_labels = [tl.lower() for tl in train_labels]
     print >>sys.stderr, "Indexing features.."
-    self.fp.index_data(train_clauses)
-    X = numpy.asarray([self.fp.featurize(clause,filter_feature) for clause in train_clauses])
+    self.fp.index_data(train_clauses, filter_feature)
+    X = numpy.asarray([self.fp.featurize(clause, filter_feature) for clause in train_clauses])
     tagset = list(set(train_labels))
     tag_index = {l:i for (i, l) in enumerate(tagset)}
     Y = numpy.asarray([[tag_index[label]] for label in train_labels])
