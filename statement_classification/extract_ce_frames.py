@@ -7,54 +7,54 @@ import sys
 import codecs
 import json
 
-conc_types = ["goal", "hypothesis", "fact", "implication"]
+conc_types = ["goal", "hypothesis", "fact", "implication", "problem"]
 exp_types = ["method", "result"]
-conc_counter = 0
-exp_counter = 0
+counter = 0
 
 pmid = sys.argv[3]
 main_frame = {"pmid": pmid, "frame-type": "conceptual-experimental-link", "meta-info": {"link-criterion": "passage-id", "statement-classifier-version": "2015-09-10"}, "frames": []}
-conc_frame_temp = {"frame-id": "", "frame-type": "conceptual", "goal": [], "hypothesis": [], "fact": [], "implication":[], "ref-exp-frame": None, "passage-text": ""}
-exp_frame_temp = {"frame-id": "", "frame-type": "experimental", "method": [], "result": [], "ref-conc-frame": None, "passage-text": ""}
+passage_frame_temp = {"frame-id": "", "frame-type": "passage", "text":"", "conceptual-frame": None, "experimental-frame": None}
+conc_frame_temp = {"subframe-id": "", "frame-type": "conceptual", "goal": [], "hypothesis": [], "fact": [], "implication":[], "problem":[]}
+exp_frame_temp = {"subframe-id": "", "frame-type": "experimental", "method": [], "result": []}
 
 
 def write_frames(conc_clauses, exp_clauses, pass_text):
-  global conc_counter
-  global exp_counter
+  global counter
 
+  passage_frame = dict(passage_frame_temp)
   conc_frame = dict(conc_frame_temp)
   exp_frame = dict(exp_frame_temp)
   empty_conc_frame = True
   empty_exp_frame = True
+  
+  passage_id = "%s-pass-%d"%(pmid, counter)
+  passage_frame["text"] = pass_text
+  passage_frame["frame-id"] = passage_id
 
-  conc_id = "%s-conc-%d"%(pmid, conc_counter)
-  conc_counter += 1
-  conc_frame["frame-id"] = conc_id
+  conc_id = "%s-conc-%d"%(pmid, counter)
+  conc_frame["subframe-id"] = conc_id
   for label in conc_clauses:
     clauses = conc_clauses[label]
     if len(clauses) > 0:
       empty_conc_frame = False
       conc_frame[label] = clauses
-  conc_frame["passage-text"] = pass_text
-  exp_id = "%s-exp-%d"%(pmid, exp_counter)
-  exp_counter += 1
-  exp_frame["frame-id"] = exp_id
+
+  exp_id = "%s-exp-%d"%(pmid, counter)
+  exp_frame["subframe-id"] = exp_id
   for label in exp_clauses:
     clauses = exp_clauses[label]
     if len(clauses) > 0:
       empty_exp_frame = False
       exp_frame[label] = clauses
-  exp_frame["passage-text"] = pass_text
 
   if not empty_exp_frame:
-    conc_frame["ref-exp-frame"] = exp_id  
+    passage_frame["experimental-frame"] = exp_frame 
   if not empty_conc_frame:
-    exp_frame["ref-conc-frame"] = conc_id
+    passage_frame["conceptual-frame"] = conc_frame
 
-  if not empty_exp_frame:
-    main_frame["frames"].append(exp_frame)
-  if not empty_conc_frame:
-    main_frame["frames"].append(conc_frame)
+  if not empty_exp_frame or not empty_conc_frame:
+    main_frame["frames"].append(passage_frame)
+    counter += 1
 
 txtfile = codecs.open(sys.argv[1], "r", "utf-8")
 sc_resfile = codecs.open(sys.argv[2], "r", "utf-8")
