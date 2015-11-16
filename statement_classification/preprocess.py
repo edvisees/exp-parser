@@ -5,8 +5,12 @@ import codecs
 from nltk.tokenize import word_tokenize, sent_tokenize
 import re
 
-os.environ['STANFORD_PARSER'] = "/usr1/shared/tools/stanford-parser-full-2015-04-20"
-os.environ['STANFORD_MODELS'] = "/usr1/shared/tools/stanford-parser-full-2015-04-20"
+from path_reader import PathReader
+
+pathreader = PathReader("./PATHS")
+
+os.environ['STANFORD_PARSER'] = pathreader.get_path('PARSER')
+os.environ['STANFORD_MODELS'] = pathreader.get_path('PARSER')
 parser = stanford.StanfordParser()
 
 def get_longest_cand(cands):
@@ -34,11 +38,9 @@ def extract_sat_clause(tree, is_root = True):
 def separate_clauses(lines):
   parse_iters = parser.parse_sents(lines)
   clauses = []
-  #print "Got: ", lines
   for words, parse_iter in zip(lines, parse_iters):
     sent = " ".join(words)
     sat_clause = extract_sat_clause(parse_iter.next())
-    #print >>sys.stderr, "Looking for %s in %s"%(sat_clause, sent)
     ind = sent.index(sat_clause)
     sat_len = len(sat_clause)
     if ind == 0:
@@ -56,7 +58,6 @@ def separate_clauses(lines):
           clause_set = (main_clause, sat_clause, remainder)
       else:
         clause_set = (main_clause, sat_clause) 
-    #clause_set = (sat_clause, sent[sat_len:]) if ind == 0 else (sent[:ind], sat_clause)
     clauses.append(clause_set)
   return clauses
 
@@ -87,7 +88,7 @@ def extract_result_section(lines):
       sents_to_process.append(sent)
   return sents_to_process
 
-def write_clauses(filename, outfilename, train=True, results_only=True):
+def write_clauses(filename, outfilename, train=False, results_only=False):
   outfile = codecs.open(outfilename, "w", "utf-8")
   inlines = codecs.open(filename, "r", "utf-8")
   lines_to_process = extract_result_section(inlines) if results_only else inlines

@@ -3,8 +3,12 @@ from nltk.tokenize import word_tokenize
 import re
 import os
 
-os.environ['CLASSPATH'] = "/usr1/shared/tools/stanford-postagger-full-2015-04-20"
-os.environ['STANFORD_MODELS'] = "/usr1/shared/tools/stanford-postagger-full-2015-04-20/models"
+from path_reader import PathReader
+
+pathreader = PathReader("./PATHS")
+
+os.environ['CLASSPATH'] = pathreader.get_path('TAGGER')
+os.environ['STANFORD_MODELS'] = pathreader.get_path('TAGGER') + "/models"
 
 class FeatureProcessing(object):
   def __init__(self):
@@ -14,7 +18,7 @@ class FeatureProcessing(object):
     self.method_words = ["probe", "detect"]
     self.pos_tagger = StanfordPOSTagger('english-bidirectional-distsim.tagger')
 
-  def get_features(self, phrase, filter_feature):
+  def get_features(self, phrase, filter_feature='0'):
     words = word_tokenize(phrase)
     pos_tags = self.pos_tagger.tag(words)
     features = []

@@ -57,10 +57,6 @@ class StatementClassifier(object):
 
     classifier = OneVsRestClassifier(SVC(kernel='linear'))
     if self.cv:
-      #num_classes = [0] * len(tagset)
-      #for label in train_labels:
-      #  num_classes[tag_index[label]] += 1
-      #folds = min(num_classes)
       print >>sys.stderr, "Starting Cross-validation for %d folds.."%(self.folds)
       y = [l[0] for l in Y]
       scores = cross_validation.cross_val_score(classifier, X, y, cv=self.folds, scoring='f1_weighted')

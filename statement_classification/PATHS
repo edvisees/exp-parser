@@ -1,0 +1,2 @@
+TAGGER = /usr1/shared/tools/stanford-postagger-full-2015-04-20
+PARSER = /usr1/shared/tools/stanford-parser-full-2015-04-20
