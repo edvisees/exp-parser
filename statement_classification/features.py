@@ -18,7 +18,7 @@ class FeatureProcessing(object):
     self.method_words = ["probe", "detect"]
     self.pos_tagger = StanfordPOSTagger('english-bidirectional-distsim.tagger')
 
-  def get_features(self, phrase, filter_feature='0'):
+  def get_features(self, phrase, filter_feature):
     words = word_tokenize(phrase)
     pos_tags = self.pos_tagger.tag(words)
     features = []
@@ -53,14 +53,14 @@ class FeatureProcessing(object):
           features.append("method_word")
     return features
 
-  def index_data(self, data, filter_feature):
+  def index_data(self, data, filter_feature='0'):
     all_features = [self.get_features(datum, filter_feature) for datum in data]
     for features in all_features:
       for feat in features:
         if feat not in self.feat_index:
           self.feat_index[feat] = len(self.feat_index)
 
-  def featurize(self, phrase, filter_feature):
+  def featurize(self, phrase, filter_feature='0'):
     indexed_features = [0] * len(self.feat_index)
     features = self.get_features(phrase, filter_feature)
     for feat in features:
