@@ -7,14 +7,14 @@
 Change the locations in PATHS to the paths to the tagger and parser
 
 ## Training classifier
-Input: Tab-separated file with label in the first column and clause in the second 
-Output: Cross-validation scores written to stderr and trained classifier saved to disk
-
-Run: `python train_classifier <input-file>`
+* Input: Tab-separated file with label in the first column and clause in the second 
+* Output: Cross-validation scores written to stderr and trained classifier saved to disk
+* Run: `python train_classifier.py <input-file>`
 
 ## Prediction
-Input: Plain text file with one clause per line
-Output: Tab separated file with input clause in the first column and predicted label in the second
+* Input: Plain text file with one clause per line
+* Output: Tab separated file with input clause in the first column and predicted label in the second
+* Run: `python predict.py <input-file> <output-file>`
 
 Note: You can use `make_data.py` to separate passages into clauses:
 `python make_data.py <input-passages-file> <output-clauses-file>`
