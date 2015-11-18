@@ -18,7 +18,7 @@ class FeatureProcessing(object):
     self.method_words = ["probe", "detect"]
     self.pos_tagger = StanfordPOSTagger('english-bidirectional-distsim.tagger')
 
-  def get_features(self, phrase, filter_feature):
+  def get_features(self, phrase, filter_feature='0'):
     words = word_tokenize(phrase)
     pos_tags = self.pos_tagger.tag(words)
     features = []
