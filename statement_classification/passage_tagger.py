@@ -1,18 +1,35 @@
 import sys
 import codecs
+import pickle
+import numpy
 
 from features import FeatureProcessing
 from pycrfsuite import Tagger, Trainer, ItemSequence
+from pystruct.models import ChainCRF
+from pystruct.learners import FrankWolfeSSVM
 
 class PassageTagger(object):
-  def __init__(self, do_train=False, trained_model_name="passage_crf_model"):
+  def __init__(self, do_train=False, trained_model_name="passage_crf_model", algorithm="crf"):
     self.trained_model_name = trained_model_name
     self.fp = FeatureProcessing()
     self.do_train = do_train
-    if do_train:
-      self.trainer = Trainer()
+    self.algorithm = algorithm
+    if algorithm == "crf":
+      if do_train:
+        self.trainer = Trainer()
+      else:
+        self.tagger = Tagger()
     else:
-      self.tagger = Tagger()
+      if do_train:
+        model = ChainCRF()
+        self.trainer = FrankWolfeSSVM(model=model)
+        self.feat_index = {}
+        self.label_index = {}
+      else:
+        self.tagger = pickle.load(open(self.trained_model_name, "rb"))
+        self.feat_index = pickle.load(open("ssvm_feat_index.pkl", "rb"))
+        label_index = pickle.load(open("ssvm_label_index.pkl", "rb"))
+        self.rev_label_index = {i: x for x, i in label_index.items()}
 
   def read_input(self, filename):
     str_seqs = []
@@ -58,13 +75,65 @@ class PassageTagger(object):
 
   def predict(self, feat_seqs):
     print >>sys.stderr, "Tagging %d sequences"%len(feat_seqs)
-    self.tagger.open(self.trained_model_name)
-    preds = [self.tagger.tag(ItemSequence(feat_seq)) for feat_seq in feat_seqs]
+    if self.algorithm == "crf":
+      self.tagger.open(self.trained_model_name)
+      preds = [self.tagger.tag(ItemSequence(feat_seq)) for feat_seq in feat_seqs]
+    else:
+      Xs = []
+      for fs in feat_seqs:
+        X = []
+        for feat_dict in fs:
+          x = [0] * len(self.feat_index)
+          for f in feat_dict:
+            if f in self.feat_index:
+              x[self.feat_index[f]] = feat_dict[f]
+          X.append(x)
+        Xs.append(numpy.asarray(X))
+      pred_ind_seqs = self.tagger.predict(Xs)
+      preds = []
+      for ps in pred_ind_seqs:
+        pred = []
+        for pred_ind in ps:
+          pred.append(self.rev_label_index[pred_ind])
+        preds.append(pred)
     return preds
 
   def train(self, feat_seqs, label_seqs):
     print >>sys.stderr, "Training on %d sequences"%len(feat_seqs)
-    for feat_seq, label_seq in zip(feat_seqs, label_seqs):
-      self.trainer.append(ItemSequence(feat_seq), label_seq)
-    self.trainer.train(self.trained_model_name)
+    if self.algorithm == "crf":
+      for feat_seq, label_seq in zip(feat_seqs, label_seqs):
+        self.trainer.append(ItemSequence(feat_seq), label_seq)
+      self.trainer.train(self.trained_model_name)
+    else:
+      for fs in feat_seqs:
+        for feat_dict in fs:
+          for f in feat_dict:
+            if f not in self.feat_index:
+              self.feat_index[f] = len(self.feat_index)
+      Xs = []
+      for fs in feat_seqs:
+        X = []
+        for feat_dict in fs:
+          x = [0] * len(self.feat_index)
+          for f in feat_dict:
+            x[self.feat_index[f]] = feat_dict[f]
+          X.append(x)
+        Xs.append(numpy.asarray(X))
+
+      for ls in label_seqs:
+        for label in ls:
+          if label not in self.label_index:
+            self.label_index[label] = len(self.label_index)
+
+      Ys = []
+      for ls in label_seqs:
+        Y = []
+        for label in ls:
+          Y.append(self.label_index[label])
+        Ys.append(numpy.asarray(Y))
+
+      self.trainer.fit(Xs, Ys)
+      pickle.dump(self.trainer, open(self.trained_model_name, "wb"))
+      pickle.dump(self.feat_index, open("ssvm_feat_index.pkl", "wb"))
+      pickle.dump(self.label_index, open("ssvm_label_index.pkl", "wb"))
 
