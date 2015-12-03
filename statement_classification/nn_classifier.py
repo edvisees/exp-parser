@@ -6,18 +6,23 @@ from random import shuffle
 
 from rep_reader import RepReader
 from mlp import MLP
+from rnn import RNN
 
 class StatementClassifier(object):
-  def __init__(self, word_rep_file, train=False, cv=True, folds=5, trained_model_name="trained_model.pkl", tagset_file="tagset.pkl"):
-    self.trained_model_name = trained_model_name
+  def __init__(self, word_rep_file, train=False, cv=True, folds=5, modeltype="mlp", trained_model_name="trained_model.pkl", tagset_file="tagset.pkl"):
+    self.trained_model_name = "%s_%s"%(modeltype, trained_model_name)
     self.cv = cv
     self.folds = folds
     self.rep_reader = RepReader(word_rep_file)
     self.input_size = self.rep_reader.rep_shape[0]
-    self.hidden_sizes = [20, 10]
+    if modeltype == "mlp":
+      self.hidden_sizes = [20, 10]
+    else:
+      self.hidden_size = 20
     self.max_iter = 100
     self.learning_rate = 0.01
     self.tag_index = None
+    self.modeltype = modeltype
     if train:
       print >>sys.stderr, "Statement classifier initialized for training."
       if self.cv:
@@ -27,7 +32,7 @@ class StatementClassifier(object):
       self.classifier = cPickle.load(open(self.trained_model_name, "rb"))
       print >>sys.stderr, "Stored model loaded. Statement classifier initialized for prediction."
 
-  def make_data(self, trainfile_name, avg=True):
+  def make_data(self, trainfile_name):
     print >>sys.stderr, "Reading data.."
     train_data = [tuple(x.strip().split("\t")) for x in codecs.open(trainfile_name, "r", "utf-8")]
     shuffle(train_data)
@@ -37,7 +42,7 @@ class StatementClassifier(object):
     if not self.tag_index:
       self.tag_index = {l:i for (i, l) in enumerate(tagset)}
     Y = numpy.asarray([self.tag_index[label] for label in train_labels])
-    if avg:
+    if self.modeltype=="mlp":
       X = numpy.asarray([numpy.mean(self.rep_reader.get_clause_rep(clause.lower()), axis=0) for clause in train_clauses])
     else:
       X = numpy.asarray([self.rep_reader.get_clause_rep(clause.lower()) for clause in train_clauses])
@@ -49,7 +54,10 @@ class StatementClassifier(object):
     return predictions
 
   def fit_model(self, X, Y, num_classes):
-    classifier = MLP(self.input_size, self.hidden_sizes, num_classes)
+    if self.modeltype == "mlp":
+      classifier = MLP(self.input_size, self.hidden_sizes, num_classes)
+    else:
+      classifier = RNN(self.input_size, self.hidden_size, num_classes)
     train_func = classifier.get_train_func(self.learning_rate)
     for num_iter in range(self.max_iter):
       for x, y in zip(X, Y):
@@ -115,13 +123,14 @@ class StatementClassifier(object):
       precision = float(num_correct[p]) / num_pred[p] if p in num_correct else 0.0
       recall = float(num_correct[p]) / num_gold[p] if p in num_correct else 0.0
       fscores[p] = 2 * precision * recall / (precision + recall) if precision !=0 and recall !=0 else 0.0
-    weighted_fscore = sum([fscores[p] * num_gold[p] for p in fscores]) / sum(num_gold.values())
+    weighted_fscore = sum([fscores[p] * num_gold[p] if p in num_gold else 0.0 for p in fscores]) / sum(num_gold.values())
     return accuracy, weighted_fscore, fscores
   
   #def predict(self, testfile_name):
 
-
-sc = StatementClassifier(sys.argv[2], train=True)
+if len(sys.argv) > 3:
+  modeltype = sys.argv[3]
+sc = StatementClassifier(sys.argv[2], modeltype=modeltype, train=True)
 sc.train(sys.argv[1])
 
 
