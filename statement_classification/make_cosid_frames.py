@@ -79,13 +79,17 @@ def make_interp_frame(clauses):
                 curr_interp_frame["local_implications"].append(clause)
     return curr_interp_frame
 
+context_id = 0
 for section in sections:
     context_clauses = []
     experiments = []
+    context_id += 1
+    experiment_id = 0
     for i, para in enumerate(section):
         all_labels = [label for clause, label in para]
         seen_labels = []
         in_exp = False
+        experiment_id += 1
         exp_clauses = []
         interp_clauses = []
         for j, (clause, label) in enumerate(para):
@@ -94,26 +98,35 @@ for section in sections:
                     if label == "result":
                         if in_exp:
                             exp_clauses.append((clause, label))
+                            print "%s\t%s\t%s_%d.%d"%(clause, label, "experiment", context_id, experiment_id)
                         else:
                             context_clauses.append((clause, label))
+                            print "%s\t%s\t%s_%d"%(clause, label, "context", context_id)
                     elif label == "goal":
                         if "method" in all_labels:
                             exp_clauses.append((clause, label))
+                            print "%s\t%s\t%s_%d.%d"%(clause, label, "experiment", context_id, experiment_id)
                         else:
                             context_clauses.append((clause, label))
+                            print "%s\t%s\t%s_%d"%(clause, label, "context", context_id)
                     else:
                         context_clauses.append((clause, label))
+                        print "%s\t%s\t%s_%d"%(clause, label, "context", context_id)
                 else:
                     exp_clauses.append((clause, label))
+                    print "%s\t%s\t%s_%d.%d"%(clause, label, "experiment", context_id, experiment_id)
             elif label == "method":
                 in_exp = True
                 exp_clauses.append((clause, label))
+                print "%s\t%s\t%s_%d.%d"%(clause, label, "experiment", context_id, experiment_id)
             elif label == "implication":
                 remaining_labels = set([label for _, label in para[j:]])
                 if i == len(section) - 1 and "result" not in remaining_labels and "method" not in remaining_labels:
                     context_clauses.append((clause, label))
+                    print "%s\t%s\t%s_%d"%(clause, label, "context", context_id)
                 else:
                     interp_clauses.append((clause, label))
+                    print "%s\t%s\t%s_%d.%d"%(clause, label, "interpretation", context_id, experiment_id)
         if len(exp_clauses) != 0 or len(interp_clauses) != 0:
             experiments.append([make_exp_frame(exp_clauses), make_interp_frame(interp_clauses)])
     curr_context_frame = make_context_frame(context_clauses)
@@ -144,5 +157,5 @@ for cf, efs in cosid_frames:
                 print "\t\t%s: %s"%(k, " ".join(intf[k]))
         expid += 1
     narr_id += 1"""
-print json.dumps(cosid_frames, indent=2, sort_keys=True)
+#print json.dumps(cosid_frames, indent=2, sort_keys=True)
                     
