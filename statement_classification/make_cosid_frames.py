@@ -21,8 +21,10 @@ def readinput(infile):
                     curr_section = []
                 curr_para = []
             continue
-        clause, label = lnstrp.split("\t")
-        curr_para.append((clause, label))
+        lnparts = lnstrp.split("\t")
+        curr_para.append(lnparts)
+        #clause, label = lnparts
+        #curr_para.append((clause, label))
     return sections
 
 sections = readinput(sys.argv[1])
@@ -86,47 +88,52 @@ for section in sections:
     context_id += 1
     experiment_id = 0
     for i, para in enumerate(section):
-        all_labels = [label for clause, label in para]
+        all_labels = [parts[1] for parts in para]
         seen_labels = []
         in_exp = False
         experiment_id += 1
         exp_clauses = []
         interp_clauses = []
-        for j, (clause, label) in enumerate(para):
+        for j, parts in enumerate(para):
+            if len(parts) == 2:
+                clause, label = parts
+		prob = "1.0"
+            elif len(parts) == 3:
+                clause, label, prob = parts
             if label in ["hypothesis", "fact", "result", "goal", "problem"]:
                 if i == 0:
                     if label == "result":
                         if in_exp:
                             exp_clauses.append((clause, label))
-                            print "%s\t%s\t%s_%d.%d"%(clause, label, "experiment", context_id, experiment_id)
+                            print "%s\t%s\t%s\t%s_%d.%d"%(clause, label, prob, "experiment", context_id, experiment_id)
                         else:
                             context_clauses.append((clause, label))
-                            print "%s\t%s\t%s_%d"%(clause, label, "context", context_id)
+                            print "%s\t%s\t%s\t%s_%d"%(clause, label, prob, "context", context_id)
                     elif label == "goal":
                         if "method" in all_labels:
                             exp_clauses.append((clause, label))
-                            print "%s\t%s\t%s_%d.%d"%(clause, label, "experiment", context_id, experiment_id)
+                            print "%s\t%s\t%s\t%s_%d.%d"%(clause, label, prob, "experiment", context_id, experiment_id)
                         else:
                             context_clauses.append((clause, label))
-                            print "%s\t%s\t%s_%d"%(clause, label, "context", context_id)
+                            print "%s\t%s\t%s\t%s_%d"%(clause, label, prob, "context", context_id)
                     else:
                         context_clauses.append((clause, label))
-                        print "%s\t%s\t%s_%d"%(clause, label, "context", context_id)
+                        print "%s\t%s\t%s\t%s_%d"%(clause, label, prob, "context", context_id)
                 else:
                     exp_clauses.append((clause, label))
-                    print "%s\t%s\t%s_%d.%d"%(clause, label, "experiment", context_id, experiment_id)
+                    print "%s\t%s\t%s\t%s_%d.%d"%(clause, label, prob, "experiment", context_id, experiment_id)
             elif label == "method":
                 in_exp = True
                 exp_clauses.append((clause, label))
-                print "%s\t%s\t%s_%d.%d"%(clause, label, "experiment", context_id, experiment_id)
+                print "%s\t%s\t%s\t%s_%d.%d"%(clause, label, prob, "experiment", context_id, experiment_id)
             elif label == "implication":
-                remaining_labels = set([label for _, label in para[j:]])
+                remaining_labels = set([n_parts[1] for n_parts in para[j:]])
                 if i == len(section) - 1 and "result" not in remaining_labels and "method" not in remaining_labels:
                     context_clauses.append((clause, label))
-                    print "%s\t%s\t%s_%d"%(clause, label, "context", context_id)
+                    print "%s\t%s\t%s\t%s_%d"%(clause, label, prob, "context", context_id)
                 else:
                     interp_clauses.append((clause, label))
-                    print "%s\t%s\t%s_%d.%d"%(clause, label, "interpretation", context_id, experiment_id)
+                    print "%s\t%s\t%s\t%s_%d.%d"%(clause, label, prob, "interpretation", context_id, experiment_id)
         if len(exp_clauses) != 0 or len(interp_clauses) != 0:
             experiments.append([make_exp_frame(exp_clauses), make_interp_frame(interp_clauses)])
     curr_context_frame = make_context_frame(context_clauses)

@@ -21,11 +21,11 @@ passage_clauses = []
 
 for clause_line in clauses_file:
     clause_parts = clause_line.strip().split("\t")
-    if len(clause_parts) > 1:
-        clause, label = clause_parts
-    else:
-        #continue
-        clause = clause_parts[0]
+    #if len(clause_parts) > 1:
+    #    clause, label = clause_parts
+    #else:
+    #continue
+    clause = clause_parts[0]
     despaced_clause = clause.replace(" ", "").replace("`", "").replace("'", "").replace('"', '')
     #try:
     while despaced_clause not in despaced_passage:

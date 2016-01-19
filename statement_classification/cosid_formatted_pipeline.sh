@@ -30,5 +30,5 @@ python separate_formatted_passages.py $infilename <( paste <( awk 'NF > 0'  $par
 echo "Separated sections"
 python make_cosid_frames.py $sectionclausecrfout > $cosid_int
 echo "Made CoSID frames"
-python repack_fries_file.py $infile $cosid_int > $cosidout
+python repack_fries_file.py $infilename $cosid_int > $cosidout
 echo "Done"

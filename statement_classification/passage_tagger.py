@@ -77,7 +77,12 @@ class PassageTagger(object):
     print >>sys.stderr, "Tagging %d sequences"%len(feat_seqs)
     if self.algorithm == "crf":
       self.tagger.open(self.trained_model_name)
-      preds = [self.tagger.tag(ItemSequence(feat_seq)) for feat_seq in feat_seqs]
+      preds = []
+      for feat_seq in feat_seqs:
+        pred = self.tagger.tag(ItemSequence(feat_seq))
+        marginals = [self.tagger.marginal(p, i) for i, p in enumerate(pred)]
+	preds.append(zip(pred, marginals))
+      #preds = [self.tagger.tag(ItemSequence(feat_seq)) for feat_seq in feat_seqs]
     else:
       Xs = []
       for fs in feat_seqs:
