@@ -7,6 +7,7 @@ from random import shuffle
 from rep_reader import RepReader
 from mlp import MLP
 from rnn import RNN
+from util import evaluate, make_folds
 
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation
@@ -80,7 +81,7 @@ class StatementClassifier(object):
           train_func(x, y)
     elif self.modeltype == "lstm":
       classifier = Sequential()
-      classifier.add(LSTM(input_dim=self.input_size, output_dim=self.input_size/2))
+      classifier.add(LSTM(input_dim=self.input_size, output_dim=self.input_size/2, activation='sigmoid'))
       #classifier.add(Dropout(0.3))
       classifier.add(Dense(num_classes, activation='softmax'))
       classifier.compile(loss='categorical_crossentropy', optimizer='adam')
@@ -95,23 +96,11 @@ class StatementClassifier(object):
     accuracies = []
     fscores = []
     if self.cv:
-      num_points = train_X.shape[0]
-      fol_len = num_points / self.folds
-      rem = num_points % self.folds
-      X_folds = numpy.split(train_X, self.folds) if rem == 0 else numpy.split(train_X[:-rem], self.folds)
-      Y_folds = numpy.split(train_Y, self.folds) if rem == 0 else numpy.split(train_Y[:-rem], self.folds)
-      for i in range(self.folds):
-        train_folds_X = []
-        train_folds_Y = []
-        for j in range(self.folds):
-          if i != j:
-            train_folds_X.append(X_folds[j])
-            train_folds_Y.append(Y_folds[j])
-        train_fold_X = numpy.concatenate(train_folds_X)
-        train_fold_Y = numpy.concatenate(train_folds_Y)
+      cv_folds = make_folds(train_X, train_Y, self.folds)
+      for i, ((train_fold_X, train_fold_Y), (test_fold_X, test_fold_Y)) in enumerate(cv_folds):
         classifier = self.fit_model(train_fold_X, train_fold_Y, num_classes)
-        predictions = self.classify(classifier, X_folds[i])
-        accuracy, weighted_fscore, _ = self.evaluate(Y_folds[i], predictions)
+        predictions = self.classify(classifier, test_fold_X)
+        accuracy, weighted_fscore, _ = evaluate(test_fold_Y, predictions)
         print >>sys.stderr, "Finished fold %d. Accuracy: %f, F-score: %f"%(i, accuracy, weighted_fscore)
         accuracies.append(accuracy)
         fscores.append(weighted_fscore)
@@ -125,35 +114,6 @@ class StatementClassifier(object):
     #cPickle.dump(classifier, open(self.trained_model_name, "wb"))
     #pickle.dump(tagset, open(self.stored_tagset, "wb"))
     print >>sys.stderr, "Done"
-
-  def evaluate(self, y, pred):
-    accuracy = float(sum([c == p for c, p in zip(y, pred)]))/len(pred)
-    num_gold = {}
-    num_pred = {}
-    num_correct = {}
-    for c, p in zip(y, pred):
-      if c in num_gold:
-        num_gold[c] += 1
-      else:
-        num_gold[c] = 1
-      if p in num_pred:
-        num_pred[p] += 1
-      else:
-        num_pred[p] = 1
-      if c == p:
-        if c in num_correct:
-          num_correct[c] += 1
-        else:
-          num_correct[c] = 1
-    fscores = {}
-    for p in num_pred:
-      precision = float(num_correct[p]) / num_pred[p] if p in num_correct else 0.0
-      recall = float(num_correct[p]) / num_gold[p] if p in num_correct else 0.0
-      fscores[p] = 2 * precision * recall / (precision + recall) if precision !=0 and recall !=0 else 0.0
-    weighted_fscore = sum([fscores[p] * num_gold[p] if p in num_gold else 0.0 for p in fscores]) / sum(num_gold.values())
-    return accuracy, weighted_fscore, fscores
-  
-  #def predict(self, testfile_name):
 
 if len(sys.argv) > 3:
   modeltype = sys.argv[3]
