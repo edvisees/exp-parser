@@ -75,4 +75,4 @@ else:
     data.append(text)
   X = numpy.asarray([get_tfidf_vec(text, word_index, idfs) for text in data])
   predictions = classifier.predict(X)
-  print predictions
+  print "\n".join(predictions)
