@@ -81,7 +81,7 @@ class StatementClassifier(object):
           train_func(x, y)
     elif self.modeltype == "lstm":
       classifier = Sequential()
-      classifier.add(LSTM(input_dim=self.input_size, output_dim=self.input_size/2, activation='sigmoid'))
+      classifier.add(LSTM(input_dim=self.input_size, output_dim=self.input_size/2))
       #classifier.add(Dropout(0.3))
       classifier.add(Dense(num_classes, activation='softmax'))
       classifier.compile(loss='categorical_crossentropy', optimizer='adam')
