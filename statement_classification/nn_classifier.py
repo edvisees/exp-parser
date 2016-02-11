@@ -115,10 +115,11 @@ class StatementClassifier(object):
     #pickle.dump(tagset, open(self.stored_tagset, "wb"))
     print >>sys.stderr, "Done"
 
-if len(sys.argv) > 3:
-  modeltype = sys.argv[3]
-sc = StatementClassifier(sys.argv[2], modeltype=modeltype, train=True)
-sc.train(sys.argv[1])
+if __name__ == "__main__":
+  if len(sys.argv) > 3:
+    modeltype = sys.argv[3]
+  sc = StatementClassifier(sys.argv[2], modeltype=modeltype, train=True)
+  sc.train(sys.argv[1])
 
 
 
