@@ -2,6 +2,7 @@ import sys
 import codecs
 import cPickle
 import numpy
+import argparse
 
 from rep_reader import RepReader
 from util import read_passages, evaluate, make_folds
@@ -9,6 +10,8 @@ from util import read_passages, evaluate, make_folds
 from keras.models import Sequential
 from keras.layers.core import TimeDistributedDense, Dropout
 from keras.layers.recurrent import LSTM
+
+from attention import TensorAttention
 
 class PassageTagger(object):
   def __init__(self, word_rep_file):
@@ -21,6 +24,10 @@ class PassageTagger(object):
     str_seqs, label_seqs = read_passages(trainfilename, train)
     self.label_ind = {"none": 0}
     maxseqlen = max([len(label_seq) for label_seq in label_seqs])
+    clauselens = []
+    for str_seq in str_seqs:
+      clauselens.extend([len(clause.split()) for clause in str_seq])
+    maxclauselen = max(clauselens)
     X = []
     Y = []
     Y_inds = []
@@ -28,12 +35,13 @@ class PassageTagger(object):
       for label in label_seq:
         if label not in self.label_ind:
           self.label_ind[label] = len(self.label_ind)
-      x = numpy.zeros((maxseqlen, self.input_size))
+      x = numpy.zeros((maxseqlen, maxclauselen, self.input_size))
       y_ind = numpy.zeros(maxseqlen)
       seq_len = len(str_seq)
       for i, (clause, label) in enumerate(zip(str_seq, label_seq)):
         clause_rep = self.rep_reader.get_clause_rep(clause)
-        x[-seq_len+i] = numpy.mean(clause_rep, axis=0)
+        #x[-seq_len+i] = numpy.mean(clause_rep, axis=0)
+        x[-seq_len+i][-len(clause_rep):] = clause_rep
         y_ind[-seq_len+i] = self.label_ind[label]
       X.append(x)
       Y_inds.append(y_ind)
@@ -55,7 +63,7 @@ class PassageTagger(object):
     for x in X:
       x_len = 0
       for i, xi in enumerate(x):
-        if sum(xi) != 0:
+        if xi.sum() != 0:
           x_len = len(x) - i
           break
       x_lens.append(x_len)
@@ -67,22 +75,27 @@ class PassageTagger(object):
       pred_label_seqs.append(pred_label_seq)
     return pred_inds, pred_label_seqs, x_lens
 
-  def fit_model(self, X, Y):
+  def fit_model(self, X, Y, use_attention):
     num_classes = len(self.label_ind)
     tagger = Sequential()
+    if use_attention:
+      tagger.add(TensorAttention(X.shape[1:]))
     tagger.add(LSTM(input_dim=self.input_size, output_dim=self.input_size/2, return_sequences=True, inner_activation='sigmoid'))
     tagger.add(TimeDistributedDense(num_classes, activation='softmax'))
     tagger.compile(loss='categorical_crossentropy', optimizer='adam')
+    print >>sys.stderr, tagger.summary()
     tagger.fit(X, Y)
     return tagger
 
-  def train(self, X, Y, cv=True, folds=5):
+  def train(self, X, Y, use_attention, cv=True, folds=5):
+    if not use_attention:
+      X = numpy.mean(X, axis=2)
     if cv:
       cv_folds = make_folds(X, Y, folds)
       accuracies = []
       fscores = []
       for fold_num, ((train_fold_X, train_fold_Y), (test_fold_X, test_fold_Y)) in enumerate(cv_folds):
-        tagger = self.fit_model(train_fold_X, train_fold_Y)
+        tagger = self.fit_model(train_fold_X, train_fold_Y, use_attention)
         pred_inds, pred_label_seqs, x_lens = self.predict(test_fold_X, tagger)
         flattened_preds = []
         flattened_targets = []
@@ -103,45 +116,21 @@ class PassageTagger(object):
       print >>sys.stderr, "Average: %0.4f (+/- %0.4f)"%(accuracies.mean(), accuracies.std() * 2)
       print >>sys.stderr, "Fscores:", fscores
       print >>sys.stderr, "Average: %0.4f (+/- %0.4f)"%(fscores.mean(), fscores.std() * 2)
-    self.tagger = self.fit_model(X, Y)
-
-  """
-  def evaluate(self, y, pred):
-    accuracy = float(sum([c == p for c, p in zip(y, pred)]))/len(pred)
-    num_gold = {}
-    num_pred = {}
-    num_correct = {}
-    for c, p in zip(y, pred):
-      if c in num_gold:
-        num_gold[c] += 1
-      else:
-        num_gold[c] = 1
-      if p in num_pred:
-        num_pred[p] += 1
-      else:
-        num_pred[p] = 1
-      if c == p:
-        if c in num_correct:
-          num_correct[c] += 1
-        else:
-          num_correct[c] = 1
-    fscores = {}
-    for p in num_pred:
-      precision = float(num_correct[p]) / num_pred[p] if p in num_correct else 0.0
-      recall = float(num_correct[p]) / num_gold[p] if p in num_correct else 0.0
-      fscores[p] = 2 * precision * recall / (precision + recall) if precision !=0 and recall !=0 else 0.0
-    weighted_fscore = sum([fscores[p] * num_gold[p] if p in num_gold else 0.0 for p in fscores]) / sum(num_gold.values())
-    return accuracy, weighted_fscore, fscores
-  """
+    self.tagger = self.fit_model(X, Y, use_attention)
 
 if __name__ == "__main__":
-  repfile = sys.argv[1]
-  infile = sys.argv[2]
-  mode = sys.argv[3]
-  train = False
-  if mode.lower() == "train":
-    train = True
+  argparser = argparse.ArgumentParser(description="Train, cross-validate and run LSTM discourse tagger")
+  argparser.add_argument('repfile', metavar='REP-FILE', type=str, help="Gzipped embedding file")
+  argparser.add_argument('infile', metavar='INPUT-FILE', type=str, help="Training or test file. One clause per line and passages separated by blank lines. Train file should have clause<tab>label in each line.")
+  argparser.add_argument('--train', help="Train (default) or test?", action='store_true')
+  argparser.add_argument('--use_attention', help="Use attention over words? Or else will average their representations", action='store_true')
+  args = argparser.parse_args()
+  repfile = args.repfile
+  infile = args.infile
+  train = args.train
+  use_attention = args.use_attention
+
   nnt = PassageTagger(repfile)
   if train:
     X, Y = nnt.make_data(infile, True)
-    nnt.train(X, Y)
+    nnt.train(X, Y, use_attention)
