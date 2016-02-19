@@ -13,8 +13,8 @@ class TensorAttention(Layer):
   def __init__(self, input_shape, init='glorot_uniform', activation='tanh', weights=None, **kwargs):
     self.init = initializations.get(init)
     self.activation = activations.get(activation)
-    self.proj_regularizer = regularizers.l2(0.01)
-    self.score_regularizer = regularizers.l2(0.01)
+    #self.proj_regularizer = regularizers.l2(0.01)
+    #self.score_regularizer = regularizers.l2(0.01)
     self.initial_weights = weights
     kwargs['input_shape'] = input_shape
     super(TensorAttention, self).__init__(**kwargs)
@@ -24,9 +24,9 @@ class TensorAttention(Layer):
     self.local_att_proj = self.init((self.input_shape[3], proj_dim))
     self.local_att_scorer = self.init((proj_dim,))
     self.params = [self.local_att_proj, self.local_att_scorer]
-    self.proj_regularizer.set_param(self.local_att_proj)
-    self.score_regularizer.set_param(self.local_att_scorer)
-    self.regularizers = [self.proj_regularizer, self.score_regularizer]
+    #self.proj_regularizer.set_param(self.local_att_proj)
+    #self.score_regularizer.set_param(self.local_att_scorer)
+    #self.regularizers = [self.proj_regularizer, self.score_regularizer]
     if self.initial_weights is not None:
       self.set_weights(self.initial_weights)
       del self.initial_weights
