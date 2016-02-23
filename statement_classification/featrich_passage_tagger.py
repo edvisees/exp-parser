@@ -2,6 +2,7 @@ import sys
 import codecs
 import pickle
 import numpy
+from random import shuffle
 
 from features import FeatureProcessing
 from pycrfsuite import Tagger, Trainer, ItemSequence
@@ -103,11 +104,16 @@ class PassageTagger(object):
         preds.append(pred)
     return preds
 
-  def train(self, feat_seqs, label_seqs):
+  def train(self, feat_seqs, label_seqs, cv=True):
     print >>sys.stderr, "Training on %d sequences"%len(feat_seqs)
     if self.algorithm == "crf":
-      for feat_seq, label_seq in zip(feat_seqs, label_seqs):
-        self.trainer.append(ItemSequence(feat_seq), label_seq)
+      feat_label_zip = zip(feat_seqs, label_seqs)
+      shuffle(feat_label_zip)
+      for i, (feat_seq, label_seq) in enumerate(feat_label_zip):
+        self.trainer.append(ItemSequence(feat_seq), label_seq, group=i%5)
+      if cv:
+        for hl in range(5):
+          self.trainer.train('', holdout=hl)
       self.trainer.train(self.trained_model_name)
     else:
       for fs in feat_seqs:
