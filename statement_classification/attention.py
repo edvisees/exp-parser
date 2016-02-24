@@ -10,9 +10,10 @@ class TensorAttention(Layer):
 
   '''
   input_ndim = 4
-  def __init__(self, input_shape, init='glorot_uniform', activation='tanh', weights=None, **kwargs):
+  def __init__(self, input_shape, context='local', init='glorot_uniform', activation='tanh', weights=None, **kwargs):
     self.init = initializations.get(init)
     self.activation = activations.get(activation)
+    self.context = context
     #self.proj_regularizer = regularizers.l2(0.01)
     #self.score_regularizer = regularizers.l2(0.01)
     self.initial_weights = weights
@@ -21,9 +22,12 @@ class TensorAttention(Layer):
 
   def build(self):
     proj_dim = self.input_shape[3]/2
-    self.local_att_proj = self.init((self.input_shape[3], proj_dim))
-    self.local_att_scorer = self.init((proj_dim,))
-    self.params = [self.local_att_proj, self.local_att_scorer]
+    if self.context == 'local':
+      self.att_proj = self.init((self.input_shape[3], proj_dim))
+    else:
+      self.att_proj = self.init((self.input_shape[1], self.input_shape[1], self.input_shape[3], proj_dim))
+    self.att_scorer = self.init((proj_dim,))
+    self.params = [self.att_proj, self.att_scorer]
     #self.proj_regularizer.set_param(self.local_att_proj)
     #self.score_regularizer.set_param(self.local_att_scorer)
     #self.regularizers = [self.proj_regularizer, self.score_regularizer]
@@ -37,9 +41,21 @@ class TensorAttention(Layer):
 
   def get_output(self, train=False):
     input = self.get_input(train)
-    proj_input = self.activation(T.tensordot(input, self.local_att_proj, axes=(3,0)))
-    att_scores = T.tensordot(proj_input, self.local_att_scorer, axes=(3, 0))
+    if self.context == 'local':
+      proj_input = self.activation(T.tensordot(input, self.att_proj, axes=(3,0)))
+    else:
+      proj_fun = lambda proj_i, inp: T.tensordot(inp, proj_i, axes=((1,3), (0,1)))
+      lin_proj_input, _ = theano.scan(fn=proj_fun, sequences=self.att_proj, non_sequences=input)
+      proj_input = self.activation(lin_proj_input.dimshuffle((1,0,2,3)))
+    att_scores = T.tensordot(proj_input, self.att_scorer, axes=(3, 0))
     # Nested scans. For shame!
+    #def get_sym_nonzero_dot(b, a):
+    #  # Instead of returning zero, return a small value multiplied by b_i to make it a function of b_i
+    #  b_sums, _ = theano.scan(fn=lambda a_i, b_i, b_sum: b_sum + ifelse(T.eq(a_i.sum(), 0.0), 0.00001 * b_i, b_i), outputs_info=0.0, sequences=[a, b])
+    #  b_norm = b_sums[-1]
+    #  b_renorm = ifelse(T.le(b_norm, 0.0001), b, b/b_sums[-1])
+    #  return T.dot(b_renorm, a)
+
     def get_sample_att(sample_input, sample_att):
       sample_att_inp, _ = theano.scan(fn=lambda s_att_i, s_input_i: T.dot(s_att_i, s_input_i), sequences=[T.nnet.softmax(sample_att), sample_input])
       return sample_att_inp
