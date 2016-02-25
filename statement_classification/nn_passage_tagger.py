@@ -7,11 +7,11 @@ import argparse
 from rep_reader import RepReader
 from util import read_passages, evaluate, make_folds
 
-from keras.models import Sequential
+from keras.models import Sequential, Graph
 from keras.layers.core import TimeDistributedDense, Dropout
 from keras.layers.recurrent import LSTM, GRU
 
-from seya.layers.recurrent import Bidirectional
+#from seya.layers.recurrent import Bidirectional
 
 from attention import TensorAttention
 
@@ -61,7 +61,7 @@ class PassageTagger(object):
     self.rev_label_ind = {i: l for (l, i) in self.label_ind.items()}
     return numpy.asarray(X), numpy.asarray(Y)
 
-  def predict(self, X, tagger=None):
+  def predict(self, X, bidirectional, tagger=None):
     if not tagger:
       tagger = self.tagger
     if not tagger:
@@ -75,7 +75,10 @@ class PassageTagger(object):
           x_len = len(x) - i
           break
       x_lens.append(x_len)
-    pred_probs = tagger.predict(X)
+    if bidirectional:
+      pred_probs = tagger.predict({'input':X})['output']
+    else:
+      pred_probs = tagger.predict(X)
     pred_inds = numpy.argmax(pred_probs, axis=2)
     pred_label_seqs = []
     for pred_ind, x_len in zip(pred_inds, x_lens):
@@ -85,25 +88,36 @@ class PassageTagger(object):
 
   def fit_model(self, X, Y, use_attention, global_attention, bidirectional):
     num_classes = len(self.label_ind)
-    tagger = Sequential()
-    if use_attention:
-      context = 'global' if global_attention else 'local'
-      tagger.add(TensorAttention(X.shape[1:], context=context))
-      _, input_len, _, input_dim = X.shape
-    else:
-      _, input_len, input_dim = X.shape
-    print >>sys.stderr, "Input shape:", X.shape, Y.shape
+    context = 'global' if global_attention else 'local'
     if bidirectional:
-      lstm_f = LSTM(output_dim=input_dim/2, return_sequences=True, inner_activation='sigmoid')
-      lstm_b = LSTM(output_dim=input_dim/2, return_sequences=True, inner_activation='sigmoid')
-      bi_lstm = Bidirectional(forward=lstm_f, backward=lstm_b, return_sequences=True, input_dim=input_dim, input_length=input_len)
-      tagger.add(bi_lstm)
+      tagger = Graph()
+      tagger.add_input(name='input', input_shape=X.shape[1:])
+      if use_attention:
+        tagger.add_node(TensorAttention(X.shape[1:], context=context), name='attention', input='input')
+        lstm_input_node = 'attention'
+      else:
+        lstm_input_node = 'input'
+      tagger.add_node(LSTM(X.shape[-1]/2, return_sequences=True), name='forward', input=lstm_input_node)
+      tagger.add_node(LSTM(X.shape[-1]/2, return_sequences=True, go_backwards=True), name='backward', input=lstm_input_node)
+      tagger.add_node(TimeDistributedDense(num_classes, activation='softmax'), name='softmax', inputs=['forward', 'backward'], merge_mode='concat', concat_axis=-1)
+      tagger.add_output(name='output', input='softmax')
+      print >>sys.stderr, tagger.summary()
+      tagger.compile('adam', {'output':'categorical_crossentropy'})
+      tagger.fit({'input':X, 'output':Y})
     else:
-      tagger.add(LSTM(input_dim=input_dim, output_dim=input_dim/2, return_sequences=True, inner_activation='sigmoid'))
-    tagger.add(TimeDistributedDense(num_classes, activation='softmax'))
-    print >>sys.stderr, tagger.summary()
-    tagger.compile(loss='categorical_crossentropy', optimizer='adam')
-    tagger.fit(X, Y)
+      tagger = Sequential()
+      if use_attention:
+        tagger.add(TensorAttention(X.shape[1:], context=context))
+        _, input_len, _, input_dim = X.shape
+      else:
+        _, input_len, input_dim = X.shape
+      print >>sys.stderr, "Input shape:", X.shape, Y.shape
+      tagger.add(LSTM(input_dim=input_dim, output_dim=input_dim/2, input_length=input_len, return_sequences=True, inner_activation='sigmoid'))
+      tagger.add(TimeDistributedDense(num_classes, activation='softmax'))
+      print >>sys.stderr, tagger.summary()
+      tagger.compile(loss='categorical_crossentropy', optimizer='adam')
+      tagger.fit(X, Y)
+
     return tagger
 
   def train(self, X, Y, use_attention, global_attention, bidirectional, cv=True, folds=5):
@@ -113,7 +127,7 @@ class PassageTagger(object):
       fscores = []
       for fold_num, ((train_fold_X, train_fold_Y), (test_fold_X, test_fold_Y)) in enumerate(cv_folds):
         tagger = self.fit_model(train_fold_X, train_fold_Y, use_attention, global_attention, bidirectional)
-        pred_inds, pred_label_seqs, x_lens = self.predict(test_fold_X, tagger)
+        pred_inds, pred_label_seqs, x_lens = self.predict(test_fold_X, bidirectional, tagger)
         flattened_preds = []
         flattened_targets = []
         for x_len, pred_ind, test_target in zip(x_lens, pred_inds, test_fold_Y):
