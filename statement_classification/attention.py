@@ -27,7 +27,7 @@ class TensorAttention(Layer):
     else:
       self.att_proj = self.init((self.input_shape[1], self.input_shape[1], self.input_shape[3], proj_dim))
     self.att_scorer = self.init((proj_dim,))
-    self.params = [self.att_proj, self.att_scorer]
+    self.trainable_weights = [self.att_proj, self.att_scorer]
     #self.proj_regularizer.set_param(self.local_att_proj)
     #self.score_regularizer.set_param(self.local_att_scorer)
     #self.regularizers = [self.proj_regularizer, self.score_regularizer]
