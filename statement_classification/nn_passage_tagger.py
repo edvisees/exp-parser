@@ -14,6 +14,7 @@ from keras.layers.recurrent import LSTM, GRU
 #from seya.layers.recurrent import Bidirectional
 
 from attention import TensorAttention
+from keras_extensions import HigherOrderTimeDistributedDense
 
 class PassageTagger(object):
   def __init__(self, word_rep_file):
@@ -86,14 +87,14 @@ class PassageTagger(object):
       pred_label_seqs.append(pred_label_seq)
     return pred_inds, pred_label_seqs, x_lens
 
-  def fit_model(self, X, Y, use_attention, global_attention, bidirectional):
+  def fit_model(self, X, Y, use_attention, att_context, bidirectional):
+    print >>sys.stderr, "Input shape:", X.shape, Y.shape
     num_classes = len(self.label_ind)
-    context = 'global' if global_attention else 'local'
     if bidirectional:
       tagger = Graph()
       tagger.add_input(name='input', input_shape=X.shape[1:])
       if use_attention:
-        tagger.add_node(TensorAttention(X.shape[1:], context=context), name='attention', input='input')
+        tagger.add_node(TensorAttention(X.shape[1:], context=att_context), name='attention', input='input')
         lstm_input_node = 'attention'
       else:
         lstm_input_node = 'input'
@@ -106,27 +107,33 @@ class PassageTagger(object):
       tagger.fit({'input':X, 'output':Y})
     else:
       tagger = Sequential()
+      word_proj_dim = 50
       if use_attention:
-        tagger.add(TensorAttention(X.shape[1:], context=context))
-        _, input_len, _, input_dim = X.shape
+        _, input_len, timesteps, input_dim = X.shape
+        tagger.add(HigherOrderTimeDistributedDense(input_dim=input_dim, output_dim=word_proj_dim))
+        att_input_shape = (input_len, timesteps, word_proj_dim)
+        print >>sys.stderr, "Attention input shape:", att_input_shape
+        tagger.add(Dropout(0.5))
+        tagger.add(TensorAttention(att_input_shape, context=att_context))
+        tagger.add(Dropout(0.5))
       else:
         _, input_len, input_dim = X.shape
-      print >>sys.stderr, "Input shape:", X.shape, Y.shape
-      tagger.add(LSTM(input_dim=input_dim, output_dim=input_dim/2, input_length=input_len, return_sequences=True, inner_activation='sigmoid'))
+        tagger.add(TimeDistributedDense(input_dim=input_dim, output_dim=word_proj_dim))
+      tagger.add(LSTM(input_dim=word_proj_dim, output_dim=word_proj_dim, input_length=input_len, return_sequences=True))
       tagger.add(TimeDistributedDense(num_classes, activation='softmax'))
       print >>sys.stderr, tagger.summary()
       tagger.compile(loss='categorical_crossentropy', optimizer='adam')
-      tagger.fit(X, Y)
+      tagger.fit(X, Y, batch_size=10)
 
     return tagger
 
-  def train(self, X, Y, use_attention, global_attention, bidirectional, cv=True, folds=5):
+  def train(self, X, Y, use_attention, att_context, bidirectional, cv=True, folds=5):
     if cv:
       cv_folds = make_folds(X, Y, folds)
       accuracies = []
       fscores = []
       for fold_num, ((train_fold_X, train_fold_Y), (test_fold_X, test_fold_Y)) in enumerate(cv_folds):
-        tagger = self.fit_model(train_fold_X, train_fold_Y, use_attention, global_attention, bidirectional)
+        tagger = self.fit_model(train_fold_X, train_fold_Y, use_attention, att_context, bidirectional)
         pred_inds, pred_label_seqs, x_lens = self.predict(test_fold_X, bidirectional, tagger)
         flattened_preds = []
         flattened_targets = []
@@ -147,7 +154,7 @@ class PassageTagger(object):
       print >>sys.stderr, "Average: %0.4f (+/- %0.4f)"%(accuracies.mean(), accuracies.std() * 2)
       print >>sys.stderr, "Fscores:", fscores
       print >>sys.stderr, "Average: %0.4f (+/- %0.4f)"%(fscores.mean(), fscores.std() * 2)
-    self.tagger = self.fit_model(X, Y, use_attention, global_attention, bidirectional)
+    self.tagger = self.fit_model(X, Y, use_attention, att_context, bidirectional)
 
 if __name__ == "__main__":
   argparser = argparse.ArgumentParser(description="Train, cross-validate and run LSTM discourse tagger")
@@ -155,17 +162,18 @@ if __name__ == "__main__":
   argparser.add_argument('infile', metavar='INPUT-FILE', type=str, help="Training or test file. One clause per line and passages separated by blank lines. Train file should have clause<tab>label in each line.")
   argparser.add_argument('--train', help="Train (default) or test?", action='store_true')
   argparser.add_argument('--use_attention', help="Use attention over words? Or else will average their representations", action='store_true')
-  argparser.add_argument('--global_attention', help="Attention over words will depend on the whole sequence", action='store_true')
+  argparser.add_argument('--att_context', type=str, help="Context to look at for determining attention (word/clause/para)")
+  argparser.set_defaults(att_context='word')
   argparser.add_argument('--bidirectional', help="Bidirectional LSTM", action='store_true')
   args = argparser.parse_args()
   repfile = args.repfile
   infile = args.infile
   train = args.train
   use_attention = args.use_attention
-  global_attention = args.global_attention
+  att_context = args.att_context
   bid = args.bidirectional
 
   nnt = PassageTagger(repfile)
   if train:
     X, Y = nnt.make_data(infile, use_attention, True)
-    nnt.train(X, Y, use_attention, global_attention, bid)
+    nnt.train(X, Y, use_attention, att_context, bid)
