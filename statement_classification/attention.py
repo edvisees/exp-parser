@@ -23,6 +23,7 @@ class TensorAttention(Layer):
 
   def build(self):
     proj_dim = self.wd/2
+    self.rec_hid_dim = proj_dim/2
     #if self.context == 'local':
     #  self.att_proj = self.init((self.input_shape[3], proj_dim))
     #else:
@@ -30,11 +31,16 @@ class TensorAttention(Layer):
     self.att_proj = self.init((self.wd, proj_dim))
     if self.context == 'word':
       self.att_scorer = self.init((proj_dim,))
+      self.trainable_weights = [self.att_proj, self.att_scorer]
     elif self.context == 'clause':
-      self.att_scorer = self.init((self.td2, proj_dim))
+      self.att_scorer = self.init((self.rec_hid_dim,))
+      #self.init_rec_hidden = self.init((rec_hid_dim,))
+      self.rec_in_weights = self.init((proj_dim, self.rec_hid_dim))
+      self.rec_hid_weights = self.init((self.rec_hid_dim,self.rec_hid_dim))
+      self.trainable_weights = [self.att_proj, self.att_scorer, self.rec_in_weights, self.rec_hid_weights]
     elif self.context == 'para':
       self.att_scorer = self.init((self.td1, self.td2, proj_dim))
-    self.trainable_weights = [self.att_proj, self.att_scorer]
+      self.trainable_weights = [self.att_proj, self.att_scorer]
     #self.proj_regularizer.set_param(self.local_att_proj)
     #self.score_regularizer.set_param(self.local_att_scorer)
     #self.regularizers = [self.proj_regularizer, self.score_regularizer]
@@ -56,20 +62,27 @@ class TensorAttention(Layer):
     if self.context == 'word':
       att_scores = T.tensordot(proj_input, self.att_scorer, axes=(3, 0))
     elif self.context == 'clause':
-      att_scores = T.tensordot(proj_input, self.att_scorer, axes=(3, 1)).sum(axis=2)
+      #att_scores = T.tensordot(proj_input, self.att_scorer, axes=(3, 1)).sum(axis=2)
+      def step(a_t, h_tm1, W_in, W, sc):
+        h_t = T.tanh(T.tensordot(a_t, W_in, axes=(2,0)) + T.tensordot(h_tm1, W, axes=(2,0)))
+        s_t = T.tensordot(h_t, sc, axes=(2,0))
+        return h_t, s_t
+      [_, scores], _ = theano.scan(step, sequences=[proj_input.dimshuffle(2,0,1,3)], outputs_info=[T.zeros((proj_input.shape[0], self.td1, self.rec_hid_dim)), None], non_sequences=[self.rec_in_weights, self.rec_hid_weights, self.att_scorer])
+      att_scores = scores.dimshuffle(1,2,0)
     elif self.context == 'para':
       att_scores = T.tensordot(proj_input, self.att_scorer, axes=(3, 2)).sum(axis=(1, 2))
     # Nested scans. For shame!
-    #def get_sym_nonzero_dot(b, a):
-    #  # Instead of returning zero, return a small value multiplied by b_i to make it a function of b_i
-    #  b_sums, _ = theano.scan(fn=lambda a_i, b_i, b_sum: b_sum + ifelse(T.eq(a_i.sum(), 0.0), 0.00001 * b_i, b_i), outputs_info=0.0, sequences=[a, b])
-    #  b_norm = b_sums[-1]
-    #  b_renorm = ifelse(T.le(b_norm, 0.0001), b, b/b_sums[-1])
-    #  return T.dot(b_renorm, a)
-
     def get_sample_att(sample_input, sample_att):
       sample_att_inp, _ = theano.scan(fn=lambda s_att_i, s_input_i: T.dot(s_att_i, s_input_i), sequences=[T.nnet.softmax(sample_att), sample_input])
       return sample_att_inp
 
     att_input, _ = theano.scan(fn=get_sample_att, sequences=[input, att_scores])
     return att_input
+
+  def get_config(self):
+    return {'cache_enabled': True,
+            'custom_name': 'tensorattention',
+            'input_shape': self.input_shape[1:],
+            'context': self.context,
+            'name': 'TensorAttention',
+            'trainable': True}
