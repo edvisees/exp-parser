@@ -3,6 +3,7 @@ import codecs
 import cPickle
 import numpy
 import argparse
+import theano
 
 from rep_reader import RepReader
 from util import read_passages, evaluate, make_folds
@@ -22,16 +23,21 @@ class PassageTagger(object):
     self.input_size = self.rep_reader.rep_shape[0]
     self.tagger = None
 
-  def make_data(self, trainfilename, use_attention, train=False):
+  def make_data(self, trainfilename, use_attention, maxseqlen=None, maxclauselen=None, label_ind=None, train=False):
     print >>sys.stderr, "Reading data.."
     str_seqs, label_seqs = read_passages(trainfilename, train)
-    self.label_ind = {"none": 0}
-    maxseqlen = max([len(label_seq) for label_seq in label_seqs])
-    if use_attention:
-      clauselens = []
-      for str_seq in str_seqs:
-        clauselens.extend([len(clause.split()) for clause in str_seq])
-      maxclauselen = max(clauselens)
+    if not label_ind:
+      self.label_ind = {"none": 0}
+    else:
+      self.label_ind = label_ind
+    if not maxseqlen:
+      maxseqlen = max([len(label_seq) for label_seq in label_seqs])
+    if not maxclauselen:
+      if use_attention:
+        clauselens = []
+        for str_seq in str_seqs:
+          clauselens.extend([len(clause.split()) for clause in str_seq])
+        maxclauselen = max(clauselens)
     X = []
     Y = []
     Y_inds = []
@@ -45,9 +51,15 @@ class PassageTagger(object):
         x = numpy.zeros((maxseqlen, self.input_size))
       y_ind = numpy.zeros(maxseqlen)
       seq_len = len(str_seq)
+      # The following conditional is true only when we've already trained, and one of the sequences in the test set is longer than the longest sequence in training.
+      if seq_len > maxseqlen:
+        str_seq = str_seq[:maxseqlen]
+        seq_len = maxseqlen
       for i, (clause, label) in enumerate(zip(str_seq, label_seq)):
         clause_rep = self.rep_reader.get_clause_rep(clause)
         if use_attention:
+          if len(clause_rep) > maxclauselen:
+            clause_rep = clause_rep[:maxclauselen]
           x[-seq_len+i][-len(clause_rep):] = clause_rep
         else:
           x[-seq_len+i] = numpy.mean(clause_rep, axis=0)
@@ -61,6 +73,20 @@ class PassageTagger(object):
       Y.append(y) 
     self.rev_label_ind = {i: l for (l, i) in self.label_ind.items()}
     return numpy.asarray(X), numpy.asarray(Y)
+
+  def get_attention_weights(self, X_test):
+    if not self.tagger:
+      raise RuntimeError, "Tagger not trained yet!"
+    inp = self.tagger.get_input()
+    att_out = None
+    for layer in self.tagger.layers:
+      if layer.get_config()['name'].lower() == "tensorattention":
+        att_out = layer.get_output()
+        break
+    if not att_out:
+      raise RuntimeError, "No attention layer found!"
+    f = theano.function([inp], att_out)
+    return f(X_test)
 
   def predict(self, X, bidirectional, tagger=None):
     if not tagger:
@@ -115,7 +141,7 @@ class PassageTagger(object):
         print >>sys.stderr, "Attention input shape:", att_input_shape
         tagger.add(Dropout(0.5))
         tagger.add(TensorAttention(att_input_shape, context=att_context))
-        tagger.add(Dropout(0.5))
+        #tagger.add(Dropout(0.5))
       else:
         _, input_len, input_dim = X.shape
         tagger.add(TimeDistributedDense(input_dim=input_dim, output_dim=word_proj_dim))
@@ -155,12 +181,21 @@ class PassageTagger(object):
       print >>sys.stderr, "Fscores:", fscores
       print >>sys.stderr, "Average: %0.4f (+/- %0.4f)"%(fscores.mean(), fscores.std() * 2)
     self.tagger = self.fit_model(X, Y, use_attention, att_context, bidirectional)
+    #TODO: Find a way to serialize the model
+    #model_ext = "att=%s_cont=%s_bi=%s"%(str(use_attention), att_context, str(bidirectional))
+    #model_config_file = open("model_%s_config.json"%model_ext, "w")
+    #model_weights_file = open("model_%s_weights"%model_ext, "w")
+    #print >>model_config_file, self.tagger.to_json()
+    #self.tagger.save_weights(model_weights_file)
+    #model_file = open("model_%s.pkl"%model_ext, "w")
+    #cPickle.dump(self.tagger, model_file)
 
 if __name__ == "__main__":
   argparser = argparse.ArgumentParser(description="Train, cross-validate and run LSTM discourse tagger")
   argparser.add_argument('repfile', metavar='REP-FILE', type=str, help="Gzipped embedding file")
   argparser.add_argument('infile', metavar='INPUT-FILE', type=str, help="Training or test file. One clause per line and passages separated by blank lines. Train file should have clause<tab>label in each line.")
-  argparser.add_argument('--train', help="Train (default) or test?", action='store_true')
+  argparser.add_argument('--train', help="Train?", action='store_true')
+  argparser.add_argument('--test_file', type=str, help="Also provide test file if training")
   argparser.add_argument('--use_attention', help="Use attention over words? Or else will average their representations", action='store_true')
   argparser.add_argument('--att_context', type=str, help="Context to look at for determining attention (word/clause/para)")
   argparser.set_defaults(att_context='word')
@@ -175,5 +210,21 @@ if __name__ == "__main__":
 
   nnt = PassageTagger(repfile)
   if train:
-    X, Y = nnt.make_data(infile, use_attention, True)
-    nnt.train(X, Y, use_attention, att_context, bid)
+    X, Y = nnt.make_data(infile, use_attention, train=True)
+    nnt.train(X, Y, use_attention, att_context, bid, cv=False)
+  if args.test_file:
+    print >>sys.stderr, "Predicting on file %s"%(args.test_file)
+    test_out_file_name = args.test_file.split("/")[-1].replace(".txt", "")+"_att=%s_cont=%s_bid=%s"%(str(use_attention), att_context, str(bid))+".out"
+    outfile = open(test_out_file_name, "w")
+    _, maxseqlen, maxclauselen, _ = X.shape
+    label_ind = nnt.label_ind
+    X_test, _ = nnt.make_data(args.test_file, use_attention, maxseqlen=maxseqlen, maxclauselen=maxclauselen, label_ind=label_ind, train=True)
+    _, pred_label_seqs, _ = nnt.predict(X_test, bid)
+    if use_attention:
+      att_weights = nnt.get_attention_weights(X_test.astype('float32'))
+      clause_seqs, _ = read_passages(args.test_file, True)
+      paralens = [[len(clause.split()) for clause in seq] for seq in clause_seqs]
+      for clauselens, sample_att_weights, pred_label_seq in zip(paralens, att_weights, pred_label_seqs):
+        for clauselen, clause_weights, pred_label in zip(clauselens, sample_att_weights[-len(clauselens):], pred_label_seq):
+          print >>outfile, pred_label, " ".join(["%.4f"%val for val in clause_weights[-clauselen:]])
+        print >>outfile
