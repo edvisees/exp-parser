@@ -209,7 +209,7 @@ if __name__ == "__main__":
   argparser.add_argument('repfile', metavar='REP-FILE', type=str, help="Gzipped embedding file")
   argparser.add_argument('infile', metavar='INPUT-FILE', type=str, help="Training or test file. One clause per line and passages separated by blank lines. Train file should have clause<tab>label in each line.")
   argparser.add_argument('--train', help="Train?", action='store_true')
-  argparser.add_argument('--test_file', type=str, help="Also provide test file if training")
+  argparser.add_argument('--test_files', type=str, nargs='+', help="Test file(s)")
   argparser.add_argument('--use_attention', help="Use attention over words? Or else will average their representations", action='store_true')
   argparser.add_argument('--att_context', type=str, help="Context to look at for determining attention (word/clause/para)")
   argparser.set_defaults(att_context='word')
@@ -226,7 +226,7 @@ if __name__ == "__main__":
   if train:
     X, Y = nnt.make_data(infile, use_attention, train=True)
     nnt.train(X, Y, use_attention, att_context, bid, cv=False)
-  if args.test_file:
+  if args.test_files:
     if train:
       label_ind = nnt.label_ind
     else:
@@ -243,24 +243,22 @@ if __name__ == "__main__":
       label_ind_json = json.load(open(model_label_ind))
       label_ind = {k: int(label_ind_json[k]) for k in label_ind_json}
       print >>sys.stderr, "Loaded label index:", label_ind
-    print >>sys.stderr, "Predicting on file %s"%(args.test_file)
-    test_out_file_name = args.test_file.split("/")[-1].replace(".txt", "")+"_att=%s_cont=%s_bid=%s"%(str(use_attention), att_context, str(bid))+".out"
-    outfile = open(test_out_file_name, "w")
     for l in nnt.tagger.layers:
       if l.name == "tensorattention":
         maxseqlen, maxclauselen = l.td1, l.td2
         break
-    X_test, _ = nnt.make_data(args.test_file, use_attention, maxseqlen=maxseqlen, maxclauselen=maxclauselen, label_ind=label_ind, train=False)
-    print >>sys.stderr, "X_test shape:", X_test.shape
-    print >>sys.stderr, "sum:", sum(X_test), "number of non zeros:", numpy.count_nonzero(X_test)
-    pred_probs, pred_label_seqs, _ = nnt.predict(X_test, bid)
-    print >>sys.stderr, "Pred probs shape:", pred_probs.shape
-    print >>sys.stderr, pred_probs[0]
-    if use_attention:
-      att_weights = nnt.get_attention_weights(X_test.astype('float32'))
-      clause_seqs, _ = read_passages(args.test_file, False)
-      paralens = [[len(clause.split()) for clause in seq] for seq in clause_seqs]
-      for clauselens, sample_att_weights, pred_label_seq in zip(paralens, att_weights, pred_label_seqs):
-        for clauselen, clause_weights, pred_label in zip(clauselens, sample_att_weights[-len(clauselens):], pred_label_seq):
-          print >>outfile, pred_label, " ".join(["%.4f"%val for val in clause_weights[-clauselen:]])
-        print >>outfile
+    for test_file in args.test_files:
+      print >>sys.stderr, "Predicting on file %s"%(test_file)
+      test_out_file_name = test_file.split("/")[-1].replace(".txt", "")+"_att=%s_cont=%s_bid=%s"%(str(use_attention), att_context, str(bid))+".out"
+      outfile = open(test_out_file_name, "w")
+      X_test, _ = nnt.make_data(test_file, use_attention, maxseqlen=maxseqlen, maxclauselen=maxclauselen, label_ind=label_ind, train=False)
+      print >>sys.stderr, "X_test shape:", X_test.shape
+      pred_probs, pred_label_seqs, _ = nnt.predict(X_test, bid)
+      if use_attention:
+        att_weights = nnt.get_attention_weights(X_test.astype('float32'))
+        clause_seqs, _ = read_passages(test_file, False)
+        paralens = [[len(clause.split()) for clause in seq] for seq in clause_seqs]
+        for clauselens, sample_att_weights, pred_label_seq in zip(paralens, att_weights, pred_label_seqs):
+          for clauselen, clause_weights, pred_label in zip(clauselens, sample_att_weights[-len(clauselens):], pred_label_seq):
+            print >>outfile, pred_label, " ".join(["%.4f"%val for val in clause_weights[-clauselen:]])
+          print >>outfile
