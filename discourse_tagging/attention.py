@@ -82,7 +82,7 @@ class TensorAttention(Layer):
   def get_config(self):
     return {'cache_enabled': True,
             'custom_name': 'tensorattention',
-            'input_shape': self.input_shape[1:],
+            'input_shape': (self.td1, self.td2, self.wd),
             'context': self.context,
             'name': 'TensorAttention',
             'trainable': True}

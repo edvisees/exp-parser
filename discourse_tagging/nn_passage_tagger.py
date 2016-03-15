@@ -4,11 +4,12 @@ import cPickle
 import numpy
 import argparse
 import theano
+import json
 
 from rep_reader import RepReader
 from util import read_passages, evaluate, make_folds
 
-from keras.models import Sequential, Graph
+from keras.models import Sequential, Graph, model_from_json
 from keras.layers.core import TimeDistributedDense, Dropout
 from keras.layers.recurrent import LSTM, GRU
 
@@ -54,18 +55,29 @@ class PassageTagger(object):
       # The following conditional is true only when we've already trained, and one of the sequences in the test set is longer than the longest sequence in training.
       if seq_len > maxseqlen:
         str_seq = str_seq[:maxseqlen]
-        seq_len = maxseqlen
-      for i, (clause, label) in enumerate(zip(str_seq, label_seq)):
-        clause_rep = self.rep_reader.get_clause_rep(clause)
-        if use_attention:
-          if len(clause_rep) > maxclauselen:
-            clause_rep = clause_rep[:maxclauselen]
-          x[-seq_len+i][-len(clause_rep):] = clause_rep
-        else:
-          x[-seq_len+i] = numpy.mean(clause_rep, axis=0)
-        y_ind[-seq_len+i] = self.label_ind[label]
-      X.append(x)
-      Y_inds.append(y_ind)
+        seq_len = maxseqlen 
+      if train:
+        for i, (clause, label) in enumerate(zip(str_seq, label_seq)):
+          clause_rep = self.rep_reader.get_clause_rep(clause)
+          if use_attention:
+            if len(clause_rep) > maxclauselen:
+              clause_rep = clause_rep[:maxclauselen]
+            x[-seq_len+i][-len(clause_rep):] = clause_rep
+          else:
+            x[-seq_len+i] = numpy.mean(clause_rep, axis=0)
+          y_ind[-seq_len+i] = self.label_ind[label]
+        X.append(x)
+        Y_inds.append(y_ind)
+      else:
+        for i, clause in enumerate(str_seq):
+          clause_rep = self.rep_reader.get_clause_rep(clause)
+          if use_attention:
+            if len(clause_rep) > maxclauselen:
+              clause_rep = clause_rep[:maxclauselen]
+            x[-seq_len+i][-len(clause_rep):] = clause_rep
+          else:
+            x[-seq_len+i] = numpy.mean(clause_rep, axis=0)
+        X.append(x)
     for y_ind in Y_inds:
       y = numpy.zeros((maxseqlen, len(self.label_ind)))
       for i, y_ind_i in enumerate(y_ind):
@@ -111,7 +123,7 @@ class PassageTagger(object):
     for pred_ind, x_len in zip(pred_inds, x_lens):
       pred_label_seq = [self.rev_label_ind[pred] for pred in pred_ind][-x_len:]
       pred_label_seqs.append(pred_label_seq)
-    return pred_inds, pred_label_seqs, x_lens
+    return pred_probs, pred_label_seqs, x_lens
 
   def fit_model(self, X, Y, use_attention, att_context, bidirectional):
     print >>sys.stderr, "Input shape:", X.shape, Y.shape
@@ -160,7 +172,8 @@ class PassageTagger(object):
       fscores = []
       for fold_num, ((train_fold_X, train_fold_Y), (test_fold_X, test_fold_Y)) in enumerate(cv_folds):
         tagger = self.fit_model(train_fold_X, train_fold_Y, use_attention, att_context, bidirectional)
-        pred_inds, pred_label_seqs, x_lens = self.predict(test_fold_X, bidirectional, tagger)
+        pred_probs, pred_label_seqs, x_lens = self.predict(test_fold_X, bidirectional, tagger)
+        pred_inds = numpy.argmax(pred_probs, axis=2)
         flattened_preds = []
         flattened_targets = []
         for x_len, pred_ind, test_target in zip(x_lens, pred_inds, test_fold_Y):
@@ -181,12 +194,13 @@ class PassageTagger(object):
       print >>sys.stderr, "Fscores:", fscores
       print >>sys.stderr, "Average: %0.4f (+/- %0.4f)"%(fscores.mean(), fscores.std() * 2)
     self.tagger = self.fit_model(X, Y, use_attention, att_context, bidirectional)
-    #TODO: Find a way to serialize the model
-    #model_ext = "att=%s_cont=%s_bi=%s"%(str(use_attention), att_context, str(bidirectional))
-    #model_config_file = open("model_%s_config.json"%model_ext, "w")
-    #model_weights_file = open("model_%s_weights"%model_ext, "w")
-    #print >>model_config_file, self.tagger.to_json()
-    #self.tagger.save_weights(model_weights_file)
+    model_ext = "att=%s_cont=%s_bi=%s"%(str(use_attention), att_context, str(bidirectional))
+    model_config_file = open("model_%s_config.json"%model_ext, "w")
+    model_weights_file_name = "model_%s_weights"%model_ext
+    model_label_ind = "model_%s_label_ind.json"%model_ext
+    print >>model_config_file, self.tagger.to_json()
+    self.tagger.save_weights(model_weights_file_name)
+    json.dump(self.label_ind, open(model_label_ind, "w"))
     #model_file = open("model_%s.pkl"%model_ext, "w")
     #cPickle.dump(self.tagger, model_file)
 
@@ -213,16 +227,38 @@ if __name__ == "__main__":
     X, Y = nnt.make_data(infile, use_attention, train=True)
     nnt.train(X, Y, use_attention, att_context, bid, cv=False)
   if args.test_file:
+    if train:
+      label_ind = nnt.label_ind
+    else:
+      # Load the model from file
+      model_ext = "att=%s_cont=%s_bi=%s"%(str(use_attention), att_context, str(bid))
+      model_config_file = open("model_%s_config.json"%model_ext, "r")
+      model_weights_file_name = "model_%s_weights"%model_ext
+      model_label_ind = "model_%s_label_ind.json"%model_ext
+      nnt.tagger = model_from_json(model_config_file.read(), custom_objects={"TensorAttention":TensorAttention, "HigherOrderTimeDistributedDense":HigherOrderTimeDistributedDense})
+      print >>sys.stderr, "Loaded model:"
+      print >>sys.stderr, nnt.tagger.summary()
+      nnt.tagger.load_weights(model_weights_file_name)
+      print >>sys.stderr, "Loaded weights"
+      label_ind_json = json.load(open(model_label_ind))
+      label_ind = {k: int(label_ind_json[k]) for k in label_ind_json}
+      print >>sys.stderr, "Loaded label index:", label_ind
     print >>sys.stderr, "Predicting on file %s"%(args.test_file)
     test_out_file_name = args.test_file.split("/")[-1].replace(".txt", "")+"_att=%s_cont=%s_bid=%s"%(str(use_attention), att_context, str(bid))+".out"
     outfile = open(test_out_file_name, "w")
-    _, maxseqlen, maxclauselen, _ = X.shape
-    label_ind = nnt.label_ind
-    X_test, _ = nnt.make_data(args.test_file, use_attention, maxseqlen=maxseqlen, maxclauselen=maxclauselen, label_ind=label_ind, train=True)
-    _, pred_label_seqs, _ = nnt.predict(X_test, bid)
+    for l in nnt.tagger.layers:
+      if l.name == "tensorattention":
+        maxseqlen, maxclauselen = l.td1, l.td2
+        break
+    X_test, _ = nnt.make_data(args.test_file, use_attention, maxseqlen=maxseqlen, maxclauselen=maxclauselen, label_ind=label_ind, train=False)
+    print >>sys.stderr, "X_test shape:", X_test.shape
+    print >>sys.stderr, "sum:", sum(X_test), "number of non zeros:", numpy.count_nonzero(X_test)
+    pred_probs, pred_label_seqs, _ = nnt.predict(X_test, bid)
+    print >>sys.stderr, "Pred probs shape:", pred_probs.shape
+    print >>sys.stderr, pred_probs[0]
     if use_attention:
       att_weights = nnt.get_attention_weights(X_test.astype('float32'))
-      clause_seqs, _ = read_passages(args.test_file, True)
+      clause_seqs, _ = read_passages(args.test_file, False)
       paralens = [[len(clause.split()) for clause in seq] for seq in clause_seqs]
       for clauselens, sample_att_weights, pred_label_seq in zip(paralens, att_weights, pred_label_seqs):
         for clauselen, clause_weights, pred_label in zip(clauselens, sample_att_weights[-len(clauselens):], pred_label_seq):
